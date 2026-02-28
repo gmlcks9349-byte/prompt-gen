@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROMPT GEN — by Heechan</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #080808; --surface: #0f0f0f; --border: #1c1c1c;
+    --accent: #c8f135; --accent-dim: #0e1400; --accent2: #ff5c3a;
+    --text: #efefef; --muted: #505050; --muted2: #282828;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  /* SETUP */
+  #setupScreen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 1000; align-items: center; justify-content: center; }
+  #setupScreen.visible { display: flex; }
+  .setup-box { width: 480px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); padding: 48px; }
+  .setup-logo { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 6px; color: var(--accent); margin-bottom: 32px; }
+  .setup-title { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+  .setup-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 28px; }
+  .setup-desc a { color: var(--accent); text-decoration: none; }
+  .key-input-wrap { position: relative; margin-bottom: 12px; }
+  .key-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; padding: 14px 48px 14px 16px; letter-spacing: 1px; transition: border-color 0.2s; }
+  .key-input:focus { outline: none; border-color: var(--accent); }
+  .key-input::placeholder { color: var(--muted); }
+  .toggle-key { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+  .setup-note { font-size: 11px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; font-style: italic; }
+  .setup-btn { width: 100%; padding: 18px; background: var(--accent); color: #000; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 6px; cursor: pointer; transition: all 0.2s; border-radius: 3px; }
+  .setup-btn:hover { background: #d5ff40; }
+  .setup-error { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--accent2); margin-bottom: 16px; display: none; }
+  .setup-error.visible { display: block; }
+
+  /* APP */
+  #appScreen { display: none; }
+  #appScreen.visible { display: block; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 44px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 5px; color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .mode-pills { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 4px; gap: 4px; }
+  .mode-pill { padding: 9px 28px; border-radius: 2px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.2s; text-transform: uppercase; }
+  .mode-pill.active { background: var(--accent); color: #000; font-weight: 700; }
+  .mode-pill:hover:not(.active) { color: var(--text); }
+  .reset-key-btn { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); background: transparent; border: 1px solid var(--border); padding: 6px 12px; border-radius: 2px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+  .reset-key-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+
+  main { display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - 71px); }
+  .panel-left { border-right: 1px solid var(--border); padding: 44px; display: flex; flex-direction: column; gap: 24px; }
+  .panel-right { padding: 44px; display: flex; flex-direction: column; }
+  .label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+
+  .upload-zone { border: 1px dashed var(--muted2); border-radius: 3px; height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s; position: relative; overflow: hidden; background: var(--surface); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .upload-zone.has-image { border-style: solid; border-color: #2a2a2a; }
+  .upload-zone img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .upload-placeholder { text-align: center; z-index: 1; }
+  .upload-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.2; }
+  .upload-text { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .upload-text strong { display: block; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--accent); margin-bottom: 4px; }
+  .upload-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.85)); padding: 14px 16px; display: none; z-index: 2; align-items: center; justify-content: space-between; }
+  .upload-zone.has-image .upload-overlay { display: flex; }
+  .upload-zone.has-image .upload-placeholder { display: none; }
+  .img-label { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: rgba(255,255,255,0.35); text-transform: uppercase; }
+  .change-btn { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--accent); background: transparent; border: 1px solid var(--accent); padding: 5px 10px; cursor: pointer; text-transform: uppercase; border-radius: 2px; }
+
+  .format-toggle { display: flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .format-btn { flex: 1; padding: 10px; border: none; background: var(--surface); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; position: relative; }
+  .format-btn:first-child { border-right: 1px solid var(--border); }
+  .format-btn.active { background: var(--muted2); color: var(--text); }
+  .format-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+  .format-btn:hover:not(.active) { color: var(--text); }
+  .json-badge { display: inline-block; background: var(--muted2); color: var(--accent); font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; padding: 2px 8px; border-radius: 2px; margin-left: 6px; vertical-align: middle; }
+
+  .intent-box { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.7; padding: 14px 16px; resize: none; min-height: 100px; transition: border-color 0.2s; }
+  .intent-box::placeholder { color: var(--muted); font-style: italic; }
+  .intent-box:focus { outline: none; border-color: #363636; }
+  .intent-hint { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.6; font-style: italic; }
+
+  .generate-btn { width: 100%; padding: 18px; background: var(--accent); color: #000; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 6px; cursor: pointer; transition: all 0.2s; border-radius: 3px; margin-top: auto; }
+  .generate-btn:hover:not(:disabled) { background: #d5ff40; letter-spacing: 8px; }
+  .generate-btn:disabled { background: var(--muted2); color: var(--muted); cursor: not-allowed; }
+  .btn-loading { display: none; font-size: 12px; letter-spacing: 4px; }
+  .generate-btn.loading .btn-text { display: none; }
+  .generate-btn.loading .btn-loading { display: block; }
+
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .status-row { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); flex-shrink: 0; }
+  .dot.pulse { background: var(--accent); animation: pulse 1.2s infinite; }
+  .dot.done { background: var(--accent); }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+  .status-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .mode-tag { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+  .empty-icon { width: 64px; height: 64px; border: 1px solid var(--muted2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; opacity: 0.2; }
+  .empty-text { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); line-height: 2; text-transform: uppercase; }
+
+  #outputContent { display: none; flex-direction: column; gap: 20px; flex: 1; }
+  .block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .block-tag { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .copy-btn { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; padding: 5px 14px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.2s; text-transform: uppercase; border-radius: 2px; }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.done { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .output-field { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; line-height: 1.85; padding: 18px; resize: vertical; min-height: 300px; }
+  .output-field:focus { outline: none; }
+  .output-field.json-field { color: var(--accent); font-size: 11px; min-height: 360px; }
+
+  /* REFINER */
+  .refiner-section { border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .refiner-section.hidden { display: none; }
+  .refiner-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .refiner-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--accent2); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .refiner-label::before { content: '↺'; font-size: 14px; }
+  .refiner-body { padding: 14px 16px; background: var(--bg); display: flex; gap: 10px; align-items: flex-start; }
+  .refiner-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.6; padding: 10px 14px; resize: none; min-height: 42px; transition: border-color 0.2s; }
+  .refiner-input::placeholder { color: var(--muted); font-style: italic; }
+  .refiner-input:focus { outline: none; border-color: var(--accent2); }
+  .refine-btn { padding: 10px 18px; background: var(--accent2); color: #fff; border: none; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 3px; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+  .refine-btn:hover:not(:disabled) { background: #ff7055; }
+  .refine-btn:disabled { background: var(--muted2); color: var(--muted); cursor: not-allowed; }
+  .refiner-hint { padding: 0 16px 12px; font-size: 11px; color: var(--muted); font-style: italic; }
+
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--accent); color: #000; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; padding: 12px 22px; border-radius: 2px; text-transform: uppercase; transform: translateY(60px); opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.orange { background: var(--accent2); color: #fff; }
+  #fileInput { display: none; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--muted2); }
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setupScreen">
+  <div class="setup-box">
+    <div class="setup-logo">PROMPT GEN</div>
+    <div class="setup-title">API Key Setup</div>
+    <div class="setup-desc">
+      Anthropic API 키를 입력해주세요.<br>
+      키는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.<br><br>
+      키가 없으시면 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 에서 발급받으세요.
+    </div>
+    <div class="key-input-wrap">
+      <input class="key-input" type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+      <button class="toggle-key" onclick="toggleKeyVisibility()">👁</button>
+    </div>
+    <div class="setup-error" id="setupError">유효하지 않은 API 키입니다.</div>
+    <div class="setup-note">키는 브라우저 localStorage에 저장됩니다. 본인 기기에서만 사용하세요.</div>
+    <button class="setup-btn" onclick="saveApiKey()">저장하고 시작하기</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <header>
+    <div class="logo">PROMPT GEN</div>
+    <div class="header-right">
+      <button class="reset-key-btn" onclick="resetApiKey()">API Key 변경</button>
+      <div class="mode-pills">
+        <button class="mode-pill active" id="pill-t2i" onclick="setMode('t2i')">T2I</button>
+        <button class="mode-pill" id="pill-i2v" onclick="setMode('i2v')">I2V</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="panel-left">
+      <div>
+        <div class="label">Reference Image</div>
+        <div class="upload-zone" id="uploadZone"
+             onclick="document.getElementById('fileInput').click()"
+             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="upload-placeholder">
+            <div class="upload-icon">◻</div>
+            <div class="upload-text"><strong>Drop image here</strong>or click to select</div>
+          </div>
+          <img id="previewImg" src="" alt="" style="display:none">
+          <div class="upload-overlay">
+            <span class="img-label">Image loaded</span>
+            <button class="change-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Change</button>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(event)">
+      </div>
+
+      <div>
+        <div class="label">Output Format</div>
+        <div class="format-toggle">
+          <button class="format-btn active" id="fmt-nl" onclick="setFormat('nl')">Prompt</button>
+          <button class="format-btn" id="fmt-json" onclick="setFormat('json')">JSON Prompt <span class="json-badge">structured</span></button>
+        </div>
+      </div>
+
+      <div id="intentSection" style="display:none">
+        <div class="label">What do you want to happen?</div>
+        <textarea class="intent-box" id="intentInput"
+          placeholder="e.g. Aaron smokes a cigarette on the terrace, slowly exhales, makes eye contact with the camera and smiles..."></textarea>
+        <div class="intent-hint">Describe freely — like a director briefing an actor.</div>
+      </div>
+
+      <button class="generate-btn" id="genBtn" onclick="generate()">
+        <span class="btn-text">Generate Prompt</span>
+        <span class="btn-loading">Generating...</span>
+      </button>
+    </div>
+
+    <div class="panel-right">
+      <div class="output-header">
+        <div class="status-row">
+          <div class="dot" id="dot"></div>
+          <span class="status-label" id="statusLabel">Waiting</span>
+        </div>
+        <span class="mode-tag" id="modeTag">T2I · Prompt</span>
+      </div>
+
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">◻</div>
+        <div class="empty-text">Upload image<br>and generate</div>
+      </div>
+
+      <div id="outputContent">
+        <div id="nlOutput">
+          <div class="block-header">
+            <span class="block-tag">Prompt</span>
+            <button class="copy-btn" onclick="copyField('engOut', this)">Copy</button>
+          </div>
+          <textarea class="output-field" id="engOut" readonly></textarea>
+        </div>
+
+        <div id="jsonOutput" style="display:none">
+          <div class="block-header">
+            <span class="block-tag">{ } JSON Prompt</span>
+            <button class="copy-btn" onclick="copyField('jsonOut', this)">Copy</button>
+          </div>
+          <textarea class="output-field json-field" id="jsonOut" readonly></textarea>
+        </div>
+
+        <div class="refiner-section hidden" id="refinerSection">
+          <div class="refiner-header">
+            <span class="refiner-label">Prompt Refiner</span>
+            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);">I2V only</span>
+          </div>
+          <div class="refiner-body">
+            <textarea class="refiner-input" id="refineInput" rows="2"
+              placeholder="e.g. lower the camera angle, make lighting darker, slow down the movement..."></textarea>
+            <button class="refine-btn" id="refineBtn" onclick="refinePrompt()">Refine ↺</button>
+          </div>
+          <div class="refiner-hint">Modifies current prompt without regenerating from scratch.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// API KEY
+function getApiKey() { return localStorage.getItem('pg_api_key') || ''; }
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-ant-')) { document.getElementById('setupError').classList.add('visible'); return; }
+  localStorage.setItem('pg_api_key', key);
+  showApp();
+}
+function resetApiKey() {
+  localStorage.removeItem('pg_api_key');
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('setupError').classList.remove('visible');
+  document.getElementById('setupScreen').classList.add('visible');
+  document.getElementById('appScreen').classList.remove('visible');
+}
+function toggleKeyVisibility() {
+  const input = document.getElementById('apiKeyInput');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+function showApp() {
+  document.getElementById('setupScreen').classList.remove('visible');
+  document.getElementById('appScreen').classList.add('visible');
+}
+window.addEventListener('load', () => {
+  if (getApiKey()) showApp();
+  else document.getElementById('setupScreen').classList.add('visible');
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apiKeyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+});
+
+// STATE
+let mode = 't2i', format = 'nl', imgBase64 = null, imgMediaType = 'image/jpeg', currentPrompt = '';
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('pill-t2i').classList.toggle('active', m === 't2i');
+  document.getElementById('pill-i2v').classList.toggle('active', m === 'i2v');
+  document.getElementById('intentSection').style.display = m === 'i2v' ? 'block' : 'none';
+  updateModeTag(); resetOutput();
+}
+function setFormat(f) {
+  format = f;
+  document.getElementById('fmt-nl').classList.toggle('active', f === 'nl');
+  document.getElementById('fmt-json').classList.toggle('active', f === 'json');
+  updateModeTag(); resetOutput();
+}
+function updateModeTag() {
+  document.getElementById('modeTag').textContent = `${mode.toUpperCase()} · ${format === 'json' ? 'JSON Prompt' : 'Prompt'}`;
+}
+
+// UPLOAD
+function onDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function onDragLeave() { document.getElementById('uploadZone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault(); document.getElementById('uploadZone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f);
+}
+function onFileSelect(e) { const f = e.target.files[0]; if (f) loadFile(f); e.target.value = ''; }
+function loadFile(file) {
+  imgMediaType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imgBase64 = e.target.result.split(',')[1];
+    const img = document.getElementById('previewImg');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('uploadZone').classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+}
+
+// GENERATE
+async function generate() {
+  if (!imgBase64) { toast('Upload an image first'); return; }
+  if (mode === 'i2v' && !document.getElementById('intentInput').value.trim()) {
+    toast('Describe what you want to happen'); return;
+  }
+  const btn = document.getElementById('genBtn');
+  btn.classList.add('loading'); btn.disabled = true;
+  setStatus('pulse', 'Analyzing...');
+  resetOutput();
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('outputContent').style.display = 'flex';
+  document.getElementById('nlOutput').style.display = format === 'nl' ? 'block' : 'none';
+  document.getElementById('jsonOutput').style.display = format === 'json' ? 'block' : 'none';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: buildSystem(),
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: imgMediaType, data: imgBase64 } },
+          { type: 'text', text: buildUserText() }
+        ]}]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = data.content[0].text;
+
+    if (format === 'nl') {
+      const prompt = extract(raw, 'PROMPT') || raw;
+      currentPrompt = prompt;
+      document.getElementById('engOut').value = prompt;
+    } else {
+      const json = extract(raw, 'JSON_PROMPT') || raw;
+      currentPrompt = json;
+      document.getElementById('jsonOut').value = json;
+    }
+
+    setStatus('done', 'Done');
+    toast('Prompt ready');
+    if (mode === 'i2v') document.getElementById('refinerSection').classList.remove('hidden');
+
+  } catch (err) {
+    setStatus('', 'Error — try again');
+    console.error(err);
+  }
+  btn.classList.remove('loading'); btn.disabled = false;
+}
+
+// REFINE
+async function refinePrompt() {
+  const instruction = document.getElementById('refineInput').value.trim();
+  if (!instruction) { toast('Enter a modification instruction', 'orange'); return; }
+  if (!currentPrompt) return;
+  const btn = document.getElementById('refineBtn');
+  btn.disabled = true; btn.textContent = '...';
+  setStatus('pulse', 'Refining...');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: `You are an expert AI prompt engineer. Modify the existing prompt based on the user's instruction. Apply the changes precisely. Keep everything else intact. Maintain the exact same format. Output only the modified prompt with no explanation or preamble.`,
+        messages: [{ role: 'user', content: `Existing prompt:\n\n${currentPrompt}\n\nModification: ${instruction}` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const refined = data.content[0].text.trim();
+    currentPrompt = refined;
+    if (format === 'nl') document.getElementById('engOut').value = refined;
+    else document.getElementById('jsonOut').value = refined;
+    setStatus('done', 'Refined');
+    document.getElementById('refineInput').value = '';
+    toast('Refined ↺', 'orange');
+  } catch (err) {
+    setStatus('', 'Error — try again');
+    console.error(err);
+  }
+  btn.disabled = false; btn.textContent = 'Refine ↺';
+}
+
+// SYSTEM PROMPTS
+function buildSystem() {
+  if (mode === 't2i' && format === 'nl')   return systemT2I_NL();
+  if (mode === 't2i' && format === 'json') return systemT2I_JSON();
+  if (mode === 'i2v' && format === 'nl')   return systemI2V_NL();
+  if (mode === 'i2v' && format === 'json') return systemI2V_JSON();
+}
+function buildUserText() {
+  if (mode === 't2i') return 'Analyze this reference image and generate an optimized Nano Banana Pro prompt.';
+  const intent = document.getElementById('intentInput').value.trim();
+  return `Analyze this reference image. The user wants: "${intent}"\n\nGenerate an optimized Kling 3.0 I2V prompt.`;
+}
+
+function systemT2I_NL() {
+  return `You are an expert Nano Banana Pro (Gemini Image) prompt engineer.
+
+FRAMEWORK — 5 ESSENTIAL ELEMENTS:
+1. SUBJECT: Physical descriptors, clothing material, silhouette
+2. COMPOSITION: Camera angle + lens (e.g. "low angle, 35mm lens, off-center framing")
+3. ACTION: Physical state with physics — fabric tension, weight distribution. NO abstract adjectives.
+4. LOCATION: Environment — architecture, surface textures, light sources
+5. STYLE: Read the image's own aesthetic DNA — derive it, don't impose.
+
+RULES:
+- Replace abstractions with specific light/shadow/texture descriptions
+- Always specify focal length and camera angle
+- Write like a Creative Director. Dense and technical.
+
+Output only the prompt inside [PROMPT][/PROMPT] tags. No preamble.`;
+}
+
+function systemT2I_JSON() {
+  return `You are an expert Nano Banana Pro JSON prompt engineer.
+
+Output only valid JSON inside [JSON_PROMPT][/JSON_PROMPT] tags. No markdown backticks. No preamble.
+
+Schema:
+{
+  "subject": {"description": "...", "clothing": "...", "body": "..."},
+  "composition": {"camera_angle": "...", "lens": "...", "framing": "...", "depth_of_field": "..."},
+  "action": {"physical_state": "...", "fabric_behavior": "..."},
+  "location": {"environment": "...", "surface": "...", "light_source": "..."},
+  "style": {"aesthetic": "...", "lighting": "...", "color_palette": "...", "mood": "..."},
+  "technical": {"resolution": "2K", "aspect_ratio": "...", "negative_prompt": "..."}
+}`;
+}
+
+function systemI2V_NL() {
+  return `You are an expert Kling 3.0 Image-to-Video prompt engineer.
+
+CORE RULE: The reference image IS the starting frame. DO NOT redescribe what is already visible. Describe ONLY motion, physics, and camera behavior.
+
+STRUCTURE: Scene State → Character Motion → Camera Movement → Physics Details
+DIRECTIVES to use: "Locked to [subject]", "Robot-bolt", "Seamless Transition", "First [A], then [B], finally [C]"
+Always end with a Negative prompt line.
+
+Output only the prompt inside [PROMPT][/PROMPT] tags. No preamble.`;
+}
+
+function systemI2V_JSON() {
+  return `You are an expert Kling 3.0 I2V JSON prompt engineer.
+
+CORE RULE: The image IS the starting frame. Describe MOTION and CAMERA only.
+
+Output only valid JSON inside [JSON_PROMPT][/JSON_PROMPT] tags. No markdown backticks. No preamble.
+
+Schema:
+{
+  "scene": {"starting_state": "...", "duration_seconds": "3-10", "aspect_ratio": "..."},
+  "character_motion": {"sequence": ["First: ...", "Then: ...", "Finally: ..."], "body_mechanics": "...", "fabric_physics": "..."},
+  "camera": {"movement_type": "...", "path": "...", "focal_length": "...", "relationship_to_subject": "..."},
+  "physics": {"environment": "...", "special_effects": "..."},
+  "directives": {"kling_keywords": ["Locked to subject", "Robot-bolt"], "mood": "..."},
+  "negative_prompt": "smiling, morphing, blurry, extra fingers, artifacts, camera shake"
+}`;
+}
+
+// HELPERS
+function extract(text, tag) {
+  const m = text.match(new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`));
+  return m ? m[1].trim() : null;
+}
+function resetOutput() {
+  ['engOut','jsonOut'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  currentPrompt = '';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('outputContent').style.display = 'none';
+  document.getElementById('refinerSection').classList.add('hidden');
+  setStatus('', 'Waiting');
+}
+function setStatus(state, text) {
+  const dot = document.getElementById('dot');
+  dot.className = 'dot' + (state ? ' ' + state : '');
+  document.getElementById('statusLabel').textContent = text;
+}
+function copyField(id, btn) {
+  const val = document.getElementById(id).value; if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('done');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 2000);
+  });
+}
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type === 'orange' ? ' orange' : '');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
