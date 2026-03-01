@@ -355,7 +355,7 @@ async function generate() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1500,
         system: buildSystem(),
         messages: [{ role: 'user', content: [
@@ -407,7 +407,7 @@ async function refinePrompt() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1500,
         system: `You are an expert AI prompt engineer. Modify the existing prompt based on the user's instruction. Apply the changes precisely. Keep everything else intact. Maintain the exact same format. Output only the modified prompt with no explanation or preamble.`,
         messages: [{ role: 'user', content: `Existing prompt:\n\n${currentPrompt}\n\nModification: ${instruction}` }]
