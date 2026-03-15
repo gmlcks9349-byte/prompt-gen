@@ -259,15 +259,15 @@
 
 <script>
 // API KEY
-function getApiKey() { return localStorage.getItem('pg_api_key') || ''; }
+function getApiKey() { return localStorage.getItem('claude_key') || ''; }
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
   if (!key.startsWith('sk-ant-')) { document.getElementById('setupError').classList.add('visible'); return; }
-  localStorage.setItem('pg_api_key', key);
+  localStorage.setItem('claude_key', key);
   showApp();
 }
 function resetApiKey() {
-  localStorage.removeItem('pg_api_key');
+  localStorage.removeItem('claude_key');
   document.getElementById('apiKeyInput').value = '';
   document.getElementById('setupError').classList.remove('visible');
   document.getElementById('setupScreen').classList.add('visible');
